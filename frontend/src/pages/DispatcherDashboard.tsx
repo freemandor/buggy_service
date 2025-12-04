@@ -2,15 +2,17 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import { fetchBuggies, Buggy } from "../api/buggies";
 import { fetchRides, createRideAndAssign, RideRequest, CreateRidePayload } from "../api/rides";
+import { fetchPOIs, POI } from "../api/pois";
 
 const DispatcherDashboard: React.FC = () => {
   const [buggies, setBuggies] = useState<Buggy[]>([]);
   const [rides, setRides] = useState<RideRequest[]>([]);
+  const [pois, setPois] = useState<POI[]>([]);
   const [hasActiveBuggy, setHasActiveBuggy] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [pickupPoi, setPickupPoi] = useState("RECEPTION");
-  const [dropoffPoi, setDropoffPoi] = useState("BEACH_BAR");
+  const [pickupPoi, setPickupPoi] = useState("");
+  const [dropoffPoi, setDropoffPoi] = useState("");
   const [numGuests, setNumGuests] = useState(2);
   const [roomNumber, setRoomNumber] = useState("");
   const [guestName, setGuestName] = useState("");
@@ -21,10 +23,21 @@ const DispatcherDashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [buggiesData, ridesData] = await Promise.all([fetchBuggies(), fetchRides()]);
+      const [buggiesData, ridesData, poisData] = await Promise.all([
+        fetchBuggies(), 
+        fetchRides(),
+        fetchPOIs()
+      ]);
       setBuggies(buggiesData);
       setRides(ridesData);
+      setPois(poisData);
       setHasActiveBuggy(buggiesData.some(b => b.status === "ACTIVE"));
+      
+      // Set default values to first two POIs
+      if (poisData.length >= 2) {
+        setPickupPoi(poisData[0].code);
+        setDropoffPoi(poisData[1].code);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to load data");
     } finally {
@@ -112,9 +125,11 @@ const DispatcherDashboard: React.FC = () => {
                     onChange={(e) => setPickupPoi(e.target.value)}
                     className="form-select"
                   >
-                    <option value="RECEPTION">Reception</option>
-                    <option value="BEACH_BAR">Beach Bar</option>
-                    <option value="BEL_AIR">Bel Air</option>
+                    {pois.map(poi => (
+                      <option key={poi.id} value={poi.code}>
+                        {poi.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -125,9 +140,11 @@ const DispatcherDashboard: React.FC = () => {
                     onChange={(e) => setDropoffPoi(e.target.value)}
                     className="form-select"
                   >
-                    <option value="RECEPTION">Reception</option>
-                    <option value="BEACH_BAR">Beach Bar</option>
-                    <option value="BEL_AIR">Bel Air</option>
+                    {pois.map(poi => (
+                      <option key={poi.id} value={poi.code}>
+                        {poi.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

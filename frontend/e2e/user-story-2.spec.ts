@@ -4,16 +4,16 @@ import { test, expect, Page } from '@playwright/test';
  * User Story #2: Intelligent Ride Assignment
  * 
  * Scenario:
- * - Buggy 1: At Bel Air, has existing Ride A (3 guests) with dropoff at Beach Bar (PLANNED)
- * - Buggy 2: At Reception, idle (0 guests)
+ * - Buggy 1: At Bel Air, has existing Ride A (3 guests) with dropoff at Beach Lounge (PLANNED)
+ * - Buggy 2: At Mont Fleuri (south end), idle (0 guests, far from Beach Bar)
  * - New Ride C: Beach Bar → Reception, 2 guests
  * 
  * Expected Behavior:
  * System assigns Ride C to Buggy 1 (not Buggy 2) because:
- * - Buggy 1 ETA to Beach Bar: BA→BB (120s) + dropoff service (25s) = 145s
- * - Buggy 2 ETA to Beach Bar: R→BA→BB (90s + 120s) = 210s
+ * - Buggy 1 ETA: Bel Air → Beach Lounge (dropoff 25s) → Beach Bar (~60s) = ~85s
+ * - Buggy 2 ETA: Mont Fleuri → Beach Bar (very long path, 300+ seconds)
  * 
- * Buggy 1 arrives sooner, so it gets assigned.
+ * Buggy 1 arrives much sooner despite being busy, so it gets assigned.
  */
 
 // Helper to add visual click indicators
@@ -107,11 +107,11 @@ test.describe('User Story #2: Intelligent Ride Assignment', () => {
     await expect(buggiesCard).toContainText('Bel Air');
     await expect(buggiesCard).toContainText('3 guest');
     
-    // Verify Buggy 2 at Reception with 0 guests
-    await expect(buggiesCard).toContainText('Reception');
+    // Verify Buggy 2 at Mont Fleuri with 0 guests
+    await expect(buggiesCard).toContainText('Mont Fleuri');
     await expect(buggiesCard).toContainText('0 guest');
     
-    console.log('✅ Initial state verified: Buggy 1 at Bel Air (3 guests), Buggy 2 at Reception (idle)');
+    console.log('✅ Initial state verified: Buggy 1 at Bel Air (3 guests), Buggy 2 at Mont Fleuri (idle, far away)');
 
     // Step 3: Create new Ride C (Beach Bar → Reception)
     const pickupSelect = page.locator('select.form-select').first();
@@ -165,9 +165,13 @@ test.describe('User Story #2: Intelligent Ride Assignment', () => {
     await expect(page.locator('.card-title')).toContainText('My route');
 
     // Step 7: Verify route has our new ride's stops
+    // Driver should have: 1) Dropoff Beach Lounge (Ride A), 2) Pickup Beach Bar (new ride), 3) Dropoff Reception (new ride)
     await expect(page.getByText(`Ride ${rideCode} · 2 guests`).first()).toBeVisible();
     await expect(page.getByText('Pickup – Beach Bar')).toBeVisible();
     await expect(page.getByText('Dropoff – Reception')).toBeVisible();
+    
+    // Also verify the first stop is Beach Lounge dropoff (from Ride A)
+    await expect(page.getByText('Dropoff – Beach Lounge').first()).toBeVisible();
 
     // Step 8: Complete the route using new stop-card structure
     console.log('Completing all route stops...');

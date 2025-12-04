@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import models
 
-from core.models import Buggy, BuggyRouteStop, RideRequest, User
+from core.models import Buggy, BuggyRouteStop, RideRequest, User, POI
 from core.serializers import (
     UserSerializer,
     BuggySummarySerializer,
@@ -15,6 +15,7 @@ from core.serializers import (
     RideRequestSerializer,
     RideRequestCreateSerializer,
     RideWithAssignmentSerializer,
+    POISerializer,
 )
 from core.services.routing import assign_ride_to_best_buggy, NoActiveBuggiesError
 
@@ -24,6 +25,13 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class POIsListView(ListAPIView):
+    """List all Points of Interest in the resort."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = POISerializer
+    queryset = POI.objects.all().order_by('name')
 
 
 class BuggiesListView(ListAPIView):

@@ -10,7 +10,9 @@ class Command(BaseCommand):
         # Get POIs
         bel_air = POI.objects.get(code="BEL_AIR")
         beach_bar = POI.objects.get(code="BEACH_BAR")
+        beach_lounge = POI.objects.get(code="BEACH_LOUNGE")
         reception = POI.objects.get(code="RECEPTION")
+        mont_fleuri = POI.objects.get(code="MONT_FLEURI")
         
         # Get or create driver2
         driver2, created = User.objects.get_or_create(
@@ -25,20 +27,20 @@ class Command(BaseCommand):
         # Get Buggy 1 (should already exist from seed)
         buggy1 = Buggy.objects.get(code="BUGGY_1")
         
-        # Create or update Buggy 2 (idle at Reception)
+        # Create or update Buggy 2 (idle at Mont Fleuri - far from Beach Bar)
         buggy2, created = Buggy.objects.update_or_create(
             code="BUGGY_2",
             defaults={
                 "display_name": "Buggy #2",
                 "capacity": 4,
                 "status": Buggy.Status.ACTIVE,
-                "current_poi": reception,
+                "current_poi": mont_fleuri,
                 "current_onboard_guests": 0,
                 "driver": driver2,
             },
         )
         action = "Created" if created else "Updated"
-        self.stdout.write(self.style.SUCCESS(f"{action} Buggy #2 at Reception (idle)"))
+        self.stdout.write(self.style.SUCCESS(f"{action} Buggy #2 at Mont Fleuri (idle, far away)"))
         
         # Clean up any existing incomplete rides for Buggy 1
         BuggyRouteStop.objects.filter(
@@ -56,10 +58,10 @@ class Command(BaseCommand):
             ]
         ).delete()
         
-        # Create existing Ride A: Bel Air → Beach Bar (3 guests, assigned to Buggy 1)
+        # Create existing Ride A: Bel Air → Beach Lounge (3 guests, assigned to Buggy 1)
         ride_a = RideRequest.objects.create(
             pickup_poi=bel_air,
-            dropoff_poi=beach_bar,
+            dropoff_poi=beach_lounge,
             num_guests=3,
             room_number="301",
             guest_name="Mrs. Johnson",
@@ -74,22 +76,22 @@ class Command(BaseCommand):
         buggy1.current_onboard_guests = 3
         buggy1.save()
         
-        # Create route stop for Buggy 1: Dropoff at Beach Bar (PLANNED)
+        # Create route stop for Buggy 1: Dropoff at Beach Lounge (PLANNED)
         BuggyRouteStop.objects.create(
             buggy=buggy1,
             ride_request=ride_a,
             stop_type=BuggyRouteStop.StopType.DROPOFF,
-            poi=beach_bar,
+            poi=beach_lounge,
             sequence_index=0,
             status=BuggyRouteStop.StopStatus.PLANNED,
         )
         
-        self.stdout.write(self.style.SUCCESS(f"Created Ride A ({ride_a.public_code}): Bel Air -> Beach Bar"))
-        self.stdout.write(self.style.SUCCESS(f"Buggy #1: At Bel Air, 3 guests onboard, heading to Beach Bar"))
+        self.stdout.write(self.style.SUCCESS(f"Created Ride A ({ride_a.public_code}): Bel Air -> Beach Lounge"))
+        self.stdout.write(self.style.SUCCESS(f"Buggy #1: At Bel Air, 3 guests onboard, heading to Beach Lounge"))
         
         self.stdout.write(self.style.SUCCESS("\n=== User Story #2 Scenario Ready ==="))
-        self.stdout.write(self.style.SUCCESS("Buggy #1: At Bel Air, has Ride A (dropoff at Beach Bar)"))
-        self.stdout.write(self.style.SUCCESS("Buggy #2: At Reception, idle (0 guests)"))
+        self.stdout.write(self.style.SUCCESS("Buggy #1: At Bel Air, has Ride A (dropoff at Beach Lounge)"))
+        self.stdout.write(self.style.SUCCESS("Buggy #2: At Mont Fleuri (south), idle (0 guests, far from Beach Bar)"))
         self.stdout.write(self.style.SUCCESS("\nNext: Create new ride Beach Bar -> Reception"))
-        self.stdout.write(self.style.SUCCESS("Expected: System assigns to Buggy #1 (arrives in 145s vs Buggy #2's 210s)"))
+        self.stdout.write(self.style.SUCCESS("Expected: Buggy #1 wins (Beach Lounge->Beach Bar ~60s vs Mont Fleuri->Beach Bar ~300s+)"))
 

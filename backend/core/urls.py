@@ -3,6 +3,7 @@ from core import views
 
 urlpatterns = [
     path("auth/me/", views.MeView.as_view()),
+    path("pois/", views.POIsListView.as_view()),
     path("buggies/", views.BuggiesListView.as_view()),
     path("rides/", views.RidesListView.as_view()),
     path("rides/create-and-assign/", views.RideCreateAndAssignView.as_view()),

@@ -74,6 +74,7 @@ class Command(BaseCommand):
         edge(bel_air, au_cap, 105)
         edge(bel_air, villa_seychelles, 135)
         edge(bel_air, the_reef, 120)
+        edge(bel_air, beach_lounge, 105)
         
         # From Villa des Seychelles
         edge(villa_seychelles, the_reef, 45)
@@ -83,6 +84,7 @@ class Command(BaseCommand):
         edge(the_reef, beach_lounge, 60)
         
         # From Beach Lounge
+        edge(beach_lounge, beach_bar, 90)
         edge(beach_lounge, main_restaurant, 150)
         
         # From Au Cap
