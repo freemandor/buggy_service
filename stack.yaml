@@ -300,7 +300,7 @@ Resources:
     Properties:
       ServiceName: buggy-backend
       Cluster: !Ref ECSCluster
-      DesiredCount: 1
+      DesiredCount: 2
       LaunchType: FARGATE
       DeploymentConfiguration:
         MaximumPercent: 200
