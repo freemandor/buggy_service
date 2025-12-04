@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import { fetchDriverRoute, driverStartStop, driverCompleteStop, DriverRouteStop } from "../api/driver";
+import { useDriverNotifications } from "../hooks/useDriverNotifications";
 
 const DriverRoutePage: React.FC = () => {
   const [stops, setStops] = useState<DriverRouteStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadRoute = async () => {
+  const loadRoute = useCallback(async () => {
     try {
       const data = await fetchDriverRoute();
       setStops(data);
@@ -17,11 +18,23 @@ const DriverRoutePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadRoute();
-  }, []);
+  }, [loadRoute]);
+
+  // Setup SSE connection for real-time updates
+  useDriverNotifications({
+    onNewRide: (event) => {
+      // Reload route when new ride is assigned
+      loadRoute();
+    },
+    onError: (error) => {
+      console.error("SSE connection error:", error);
+      // Connection errors are handled by auto-reconnect in the hook
+    }
+  });
 
   const handleStart = async (stopId: number) => {
     try {
