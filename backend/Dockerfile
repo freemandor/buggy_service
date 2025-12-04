@@ -19,5 +19,5 @@ RUN pip install --upgrade pip \
 COPY . .
 
 EXPOSE 8000
-# Use threaded workers so SSE connections don't block all requests.
+# Threaded workers keep lightweight requests responsive while background calls run.
 CMD ["gunicorn", "buggy_project.wsgi:application", "--bind", "0.0.0.0:8000", "--worker-class", "gthread", "--workers", "4", "--threads", "4", "--timeout", "120"]

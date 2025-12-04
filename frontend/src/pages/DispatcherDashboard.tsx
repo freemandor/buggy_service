@@ -3,7 +3,6 @@ import Layout from "../components/Layout";
 import { fetchBuggies, Buggy } from "../api/buggies";
 import { fetchRides, createRideAndAssign, RideRequest, CreateRidePayload } from "../api/rides";
 import { fetchPOIs, POI } from "../api/pois";
-import { useDispatcherNotifications } from "../hooks/useDispatcherNotifications";
 
 const DispatcherDashboard: React.FC = () => {
   const [buggies, setBuggies] = useState<Buggy[]>([]);
@@ -48,19 +47,9 @@ const DispatcherDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const interval = window.setInterval(loadData, 3000);
+    return () => window.clearInterval(interval);
   }, [loadData]);
-
-  // Setup SSE connection for real-time updates
-  useDispatcherNotifications({
-    onRideStatusUpdate: () => {
-      // Reload data when ride status changes
-      loadData();
-    },
-    onError: (error) => {
-      console.error("SSE connection error:", error);
-      // Connection errors are handled by auto-reconnect in the hook
-    }
-  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

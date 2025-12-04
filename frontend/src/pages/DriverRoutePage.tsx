@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import { fetchDriverRoute, driverStartStop, driverCompleteStop, DriverRouteStop } from "../api/driver";
-import { useDriverNotifications } from "../hooks/useDriverNotifications";
 
 const DriverRoutePage: React.FC = () => {
   const [stops, setStops] = useState<DriverRouteStop[]>([]);
@@ -22,19 +21,9 @@ const DriverRoutePage: React.FC = () => {
 
   useEffect(() => {
     loadRoute();
+    const interval = window.setInterval(loadRoute, 3000);
+    return () => window.clearInterval(interval);
   }, [loadRoute]);
-
-  // Setup SSE connection for real-time updates
-  useDriverNotifications({
-    onNewRide: (_event) => {
-      // Reload route when new ride is assigned
-      loadRoute();
-    },
-    onError: (error) => {
-      console.error("SSE connection error:", error);
-      // Connection errors are handled by auto-reconnect in the hook
-    }
-  });
 
   const handleStart = async (stopId: number) => {
     try {
