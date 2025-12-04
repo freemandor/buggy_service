@@ -16,8 +16,6 @@ import { test, expect, Page } from '@playwright/test';
  * Buggy 1 arrives sooner, so it gets assigned.
  */
 
-const API_BASE = 'http://localhost:8000/api';
-
 // Helper to add visual click indicators
 async function addClickIndicators(page: Page) {
   await page.addInitScript(() => {
@@ -61,38 +59,7 @@ async function addClickIndicators(page: Page) {
   });
 }
 
-// Helper to get auth token
-async function getAuthToken(username: string, password: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/auth/login/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await response.json();
-  return data.access;
-}
-
-// Helper to make authenticated API calls
-async function apiCall(path: string, token: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
-  return response.json();
-}
-
 test.describe('User Story #2: Intelligent Ride Assignment', () => {
-  let dispatcherToken: string;
-
-  test.beforeAll(async () => {
-    // Get dispatcher token for API setup
-    dispatcherToken = await getAuthToken('dispatcher', 'dispatcher');
-  });
-
   test.beforeEach(async ({ page }) => {
     // Reset the database to User Story #2 initial state
     // We need to run: python manage.py setup_user_story_2
@@ -106,11 +73,7 @@ test.describe('User Story #2: Intelligent Ride Assignment', () => {
       const backendPath = 'C:\\Users\\freem\\src\\buggy_service\\backend';
       const pythonExe = `${backendPath}\\.venv\\Scripts\\python.exe`;
       const managePy = `${backendPath}\\manage.py`;
-      
-      // Use test settings if running in test mode (detected by baseURL port)
-      const isTestMode = process.env.PLAYWRIGHT_BASE_URL?.includes(':5174');
-      const settingsFlag = isTestMode ? '--settings=buggy_project.settings_test' : '';
-      const command = `"${pythonExe}" "${managePy}" setup_user_story_2 ${settingsFlag}`;
+      const command = `"${pythonExe}" "${managePy}" setup_user_story_2`;
       
       console.log('Resetting database to User Story #2 initial state...');
       await execAsync(command);
