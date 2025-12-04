@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import DispatcherDashboard from "./pages/DispatcherDashboard";
 import DriverRoutePage from "./pages/DriverRoutePage";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import POIDetailPage from "./pages/POIDetailPage";
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -42,6 +43,14 @@ const App: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={["MANAGER"]}>
             <ManagerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/pois/:poiId"
+        element={
+          <ProtectedRoute allowedRoles={["MANAGER"]}>
+            <POIDetailPage />
           </ProtectedRoute>
         }
       />

@@ -192,3 +192,257 @@ class MetricsSummaryView(APIView):
                 "avg_wait_time_s": avg_wait_s,
             }
         )
+
+
+# ===== Manager CRUD Views =====
+
+class ManagerPermission:
+    """Helper to check if user is a manager."""
+    @staticmethod
+    def check(request):
+        if not request.user.is_authenticated:
+            return False
+        return request.user.role == User.Role.MANAGER
+
+
+class BuggyCRUDView(APIView):
+    """CRUD operations for buggies (Manager only)."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Create a new buggy."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.serializers import BuggyCreateUpdateSerializer
+        serializer = BuggyCreateUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            buggy = serializer.save()
+            return Response(BuggySummarySerializer(buggy).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, buggy_id):
+        """Update an existing buggy."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        buggy = get_object_or_404(Buggy, id=buggy_id)
+        from core.serializers import BuggyCreateUpdateSerializer
+        serializer = BuggyCreateUpdateSerializer(buggy, data=request.data, partial=True)
+        if serializer.is_valid():
+            buggy = serializer.save()
+            return Response(BuggySummarySerializer(buggy).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, buggy_id):
+        """Delete a buggy."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        buggy = get_object_or_404(Buggy, id=buggy_id)
+        
+        # Prevent deletion if buggy has active/planned route stops
+        active_stops = BuggyRouteStop.objects.filter(
+            buggy=buggy,
+            status__in=[BuggyRouteStop.StopStatus.PLANNED, BuggyRouteStop.StopStatus.ON_ROUTE]
+        ).exists()
+        
+        if active_stops:
+            return Response(
+                {"error": "Cannot delete buggy with active route stops"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        buggy.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DriverCRUDView(APIView):
+    """CRUD operations for drivers (Manager only)."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """List all drivers."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        drivers = User.objects.filter(role=User.Role.DRIVER).order_by('username')
+        from core.serializers import DriverCreateUpdateSerializer
+        serializer = DriverCreateUpdateSerializer(drivers, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """Create a new driver."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.serializers import DriverCreateUpdateSerializer
+        serializer = DriverCreateUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            driver = serializer.save()
+            return Response(DriverCreateUpdateSerializer(driver).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, driver_id):
+        """Update an existing driver."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        driver = get_object_or_404(User, id=driver_id, role=User.Role.DRIVER)
+        from core.serializers import DriverCreateUpdateSerializer
+        serializer = DriverCreateUpdateSerializer(driver, data=request.data, partial=True)
+        if serializer.is_valid():
+            driver = serializer.save()
+            return Response(DriverCreateUpdateSerializer(driver).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, driver_id):
+        """Delete a driver."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        driver = get_object_or_404(User, id=driver_id, role=User.Role.DRIVER)
+        
+        # Prevent deletion if driver has assigned buggies
+        if Buggy.objects.filter(driver=driver).exists():
+            return Response(
+                {"error": "Cannot delete driver with assigned buggies"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        driver.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class POICRUDView(APIView):
+    """CRUD operations for POIs (Manager only)."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Create a new POI."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.serializers import POICreateUpdateSerializer
+        serializer = POICreateUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            poi = serializer.save()
+            return Response(POISerializer(poi).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, poi_id):
+        """Update an existing POI."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        poi = get_object_or_404(POI, id=poi_id)
+        from core.serializers import POICreateUpdateSerializer
+        serializer = POICreateUpdateSerializer(poi, data=request.data, partial=True)
+        if serializer.is_valid():
+            poi = serializer.save()
+            return Response(POISerializer(poi).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, poi_id):
+        """Delete a POI."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        poi = get_object_or_404(POI, id=poi_id)
+        
+        # Prevent deletion if POI is currently used by buggies
+        if Buggy.objects.filter(current_poi=poi).exists():
+            return Response(
+                {"error": "Cannot delete POI - buggies are currently at this location"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Prevent deletion if POI is used by any rides (to preserve historical data)
+        if RideRequest.objects.filter(
+            models.Q(pickup_poi=poi) | models.Q(dropoff_poi=poi)
+        ).exists():
+            return Response(
+                {"error": "Cannot delete POI - rides are using this location"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Prevent deletion if POI is used in any route stops (to preserve historical data)
+        if BuggyRouteStop.objects.filter(poi=poi).exists():
+            return Response(
+                {"error": "Cannot delete POI - route stops are using this location"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        poi.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class POIEdgeCRUDView(APIView):
+    """CRUD operations for POI edges (Manager only)."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """List all POI edges, optionally filtered by POI."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.models import PoiEdge
+        from core.serializers import POIEdgeSerializer
+        
+        # Check if filtering by specific POI
+        poi_id = request.query_params.get('poi_id')
+        if poi_id:
+            # Get edges where this POI is either from or to
+            edges = PoiEdge.objects.filter(
+                models.Q(from_poi_id=poi_id) | models.Q(to_poi_id=poi_id)
+            ).select_related('from_poi', 'to_poi').order_by('from_poi__name', 'to_poi__name')
+        else:
+            # Get all edges
+            edges = PoiEdge.objects.all().select_related('from_poi', 'to_poi').order_by('from_poi__name', 'to_poi__name')
+        
+        serializer = POIEdgeSerializer(edges, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """Create a new POI edge."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from django.db import IntegrityError
+        from core.serializers import POIEdgeCreateUpdateSerializer, POIEdgeSerializer
+        serializer = POIEdgeCreateUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                edge = serializer.save()
+                return Response(POIEdgeSerializer(edge).data, status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response(
+                    {"error": "Edge between these POIs already exists"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, edge_id):
+        """Update an existing POI edge."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.models import PoiEdge
+        from core.serializers import POIEdgeCreateUpdateSerializer, POIEdgeSerializer
+        edge = get_object_or_404(PoiEdge, id=edge_id)
+        serializer = POIEdgeCreateUpdateSerializer(edge, data=request.data, partial=True)
+        if serializer.is_valid():
+            edge = serializer.save()
+            return Response(POIEdgeSerializer(edge).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, edge_id):
+        """Delete a POI edge."""
+        if not ManagerPermission.check(request):
+            return Response({"error": "Manager role required"}, status=status.HTTP_403_FORBIDDEN)
+        
+        from core.models import PoiEdge
+        edge = get_object_or_404(PoiEdge, id=edge_id)
+        edge.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

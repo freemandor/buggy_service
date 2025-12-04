@@ -11,5 +11,15 @@ urlpatterns = [
     path("driver/stops/<int:stop_id>/start/", views.DriverStopStartView.as_view()),
     path("driver/stops/<int:stop_id>/complete/", views.DriverStopCompleteView.as_view()),
     path("metrics/summary/", views.MetricsSummaryView.as_view()),
+    
+    # Manager CRUD endpoints
+    path("manager/buggies/", views.BuggyCRUDView.as_view(), name="manager-buggy-list"),
+    path("manager/buggies/<int:buggy_id>/", views.BuggyCRUDView.as_view(), name="manager-buggy-detail"),
+    path("manager/drivers/", views.DriverCRUDView.as_view(), name="manager-driver-list"),
+    path("manager/drivers/<int:driver_id>/", views.DriverCRUDView.as_view(), name="manager-driver-detail"),
+    path("manager/pois/", views.POICRUDView.as_view(), name="manager-poi-list"),
+    path("manager/pois/<int:poi_id>/", views.POICRUDView.as_view(), name="manager-poi-detail"),
+    path("manager/poi-edges/", views.POIEdgeCRUDView.as_view(), name="manager-poi-edge-list"),
+    path("manager/poi-edges/<int:edge_id>/", views.POIEdgeCRUDView.as_view(), name="manager-poi-edge-detail"),
 ]
 

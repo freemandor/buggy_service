@@ -14,6 +14,16 @@ class Command(BaseCommand):
         reception = POI.objects.get(code="RECEPTION")
         mont_fleuri = POI.objects.get(code="MONT_FLEURI")
         
+        # Get or create driver1
+        driver1, created = User.objects.get_or_create(
+            username="driver1",
+            defaults={"role": User.Role.DRIVER}
+        )
+        if created:
+            driver1.set_password("driver1")
+            driver1.save()
+            self.stdout.write(self.style.SUCCESS(f"Created driver1"))
+        
         # Get or create driver2
         driver2, created = User.objects.get_or_create(
             username="driver2",
@@ -24,8 +34,20 @@ class Command(BaseCommand):
             driver2.save()
             self.stdout.write(self.style.SUCCESS(f"Created driver2"))
         
-        # Get Buggy 1 (should already exist from seed)
-        buggy1 = Buggy.objects.get(code="BUGGY_1")
+        # Get or create Buggy 1
+        buggy1, created = Buggy.objects.get_or_create(
+            code="BUGGY_1",
+            defaults={
+                "display_name": "Buggy #1",
+                "capacity": 4,
+                "status": Buggy.Status.ACTIVE,
+                "current_poi": bel_air,
+                "current_onboard_guests": 0,
+                "driver": driver1,
+            },
+        )
+        if created:
+            self.stdout.write(self.style.SUCCESS(f"Created Buggy #1"))
         
         # Create or update Buggy 2 (idle at Mont Fleuri - far from Beach Bar)
         buggy2, created = Buggy.objects.update_or_create(
