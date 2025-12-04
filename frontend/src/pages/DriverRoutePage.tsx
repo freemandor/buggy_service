@@ -26,7 +26,7 @@ const DriverRoutePage: React.FC = () => {
 
   // Setup SSE connection for real-time updates
   useDriverNotifications({
-    onNewRide: (event) => {
+    onNewRide: (_event) => {
       // Reload route when new ride is assigned
       loadRoute();
     },
