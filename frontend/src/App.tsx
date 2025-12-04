@@ -9,7 +9,7 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 import POIDetailPage from "./pages/POIDetailPage";
 
 const App: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: _loading } = useAuth();
 
   const HomeRedirect: React.FC = () => {
     if (!user) return <Navigate to="/login" replace />;

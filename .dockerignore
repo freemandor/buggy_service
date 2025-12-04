@@ -1,0 +1,9 @@
+.git
+node_modules
+**/node_modules
+**/__pycache__
+*.py[cod]
+*.sqlite3
+.DS_Store
+.env
+.env.*

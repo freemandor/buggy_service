@@ -35,6 +35,14 @@ class MeView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
+class HealthCheckView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        return Response({"status": "ok"})
+
+
 class POIsListView(ListAPIView):
     """List all Points of Interest in the resort."""
     permission_classes = [IsAuthenticated]
