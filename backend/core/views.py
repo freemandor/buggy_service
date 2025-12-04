@@ -2,11 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, renderers
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import models
 from django.http import StreamingHttpResponse
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from core.models import Buggy, BuggyRouteStop, RideRequest, User, POI
 from core.serializers import (
@@ -504,10 +505,27 @@ from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
+class EventStreamRenderer(renderers.BaseRenderer):
+    """Renderer to satisfy Accept: text/event-stream for SSE endpoints."""
+    media_type = 'text/event-stream'
+    format = 'event-stream'
+    charset = None
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
+
+
 @method_decorator(csrf_exempt, name='dispatch')
-class DriverRideNotificationsView(View):
-    """Server-Sent Events endpoint for real-time driver notifications."""
-    
+class DriverRideNotificationsView(APIView):
+    """Server-Sent Events endpoint for real-time driver notifications.
+
+    Supports standard DRF authentication (for tests/API clients) and a `token`
+    query param for EventSource, which cannot send auth headers.
+    """
+    authentication_classes = [JWTAuthentication]
+    renderer_classes = [EventStreamRenderer, renderers.JSONRenderer, renderers.BrowsableAPIRenderer]
+    permission_classes = []  # Custom auth handling for SSE fallback
+
     def options(self, request):
         """Handle CORS preflight."""
         response = HttpResponse()
@@ -515,31 +533,41 @@ class DriverRideNotificationsView(View):
         response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
         response['Access-Control-Allow-Headers'] = 'Content-Type'
         return response
-    
-    def get(self, request):
-        """Stream SSE events to the driver."""
-        # Authenticate via token query parameter (EventSource doesn't support headers)
-        from rest_framework_simplejwt.tokens import AccessToken
-        from rest_framework_simplejwt.exceptions import TokenError
-        
+
+    def _get_authenticated_user(self, request):
+        """Resolve the authenticated user from DRF auth or `token` query param."""
+        # DRF-authenticated request (used by tests/standard API clients)
+        if request.user and request.user.is_authenticated:
+            return request.user
+
+        # Fallback: JWT token provided as query parameter for SSE
         token = request.GET.get('token')
         if not token:
-            return JsonResponse({"error": "Token required"}, status=401)
-        
+            return None
+
+        from rest_framework_simplejwt.tokens import AccessToken
+        from rest_framework_simplejwt.exceptions import TokenError
+
         try:
             access_token = AccessToken(token)
             user_id = access_token['user_id']
-            user = User.objects.get(id=user_id)
+            return User.objects.get(id=user_id)
         except (TokenError, User.DoesNotExist):
-            return JsonResponse({"error": "Invalid token"}, status=401)
-        
+            return None
+
+    def get(self, request):
+        """Stream SSE events to the driver."""
+        user = self._get_authenticated_user(request)
+        if not user:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+
         # Verify user is a driver
         if user.role != User.Role.DRIVER:
             return JsonResponse({"error": "Driver role required"}, status=403)
-        
+
         # Get driver's event stream
         event_stream = get_driver_event_stream(user.id)
-        
+
         # Return streaming response
         response = StreamingHttpResponse(
             event_stream,
