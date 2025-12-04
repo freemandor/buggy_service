@@ -106,7 +106,11 @@ test.describe('User Story #2: Intelligent Ride Assignment', () => {
       const backendPath = 'C:\\Users\\freem\\src\\buggy_service\\backend';
       const pythonExe = `${backendPath}\\.venv\\Scripts\\python.exe`;
       const managePy = `${backendPath}\\manage.py`;
-      const command = `"${pythonExe}" "${managePy}" setup_user_story_2`;
+      
+      // Use test settings if running in test mode (detected by baseURL port)
+      const isTestMode = process.env.PLAYWRIGHT_BASE_URL?.includes(':5174');
+      const settingsFlag = isTestMode ? '--settings=buggy_project.settings_test' : '';
+      const command = `"${pythonExe}" "${managePy}" setup_user_story_2 ${settingsFlag}`;
       
       console.log('Resetting database to User Story #2 initial state...');
       await execAsync(command);
