@@ -186,17 +186,19 @@ class DriverStopCompleteView(APIView):
             ride.save(update_fields=["status", "pickup_completed_at"])
         else:
             buggy.current_onboard_guests -= ride.num_guests
-            remaining = ride.route_stops.exclude(status=BuggyRouteStop.StopStatus.COMPLETED)
-            if not remaining.exists():
-                ride.status = RideRequest.Status.COMPLETED
-                ride.dropoff_completed_at = timezone.now()
-                ride.save(update_fields=["status", "dropoff_completed_at"])
 
         buggy.save(update_fields=["current_poi", "current_onboard_guests"])
 
         stop.status = BuggyRouteStop.StopStatus.COMPLETED
         stop.completed_at = timezone.now()
         stop.save(update_fields=["status", "completed_at"])
+
+        if stop.stop_type == BuggyRouteStop.StopType.DROPOFF:
+            remaining = ride.route_stops.exclude(status=BuggyRouteStop.StopStatus.COMPLETED)
+            if not remaining.exists():
+                ride.status = RideRequest.Status.COMPLETED
+                ride.dropoff_completed_at = timezone.now()
+                ride.save(update_fields=["status", "dropoff_completed_at"])
 
         # Notify all dispatchers of ride status update
         send_event_to_all_dispatchers(

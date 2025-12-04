@@ -1,28 +1,29 @@
-"""Quick API test script to verify backend is working"""
-import requests
+"""Quick API test script to verify backend is working."""
 import json
+import requests
 
 BASE_URL = "http://localhost:8000/api"
 
+
 def test_backend():
     print("Testing Backend APIs...\n")
-    
+
     # 1. Test login
     print("1. Testing login endpoint...")
     login_response = requests.post(
         f"{BASE_URL}/auth/login/",
-        json={"username": "dispatcher", "password": "dispatcher"}
+        json={"username": "dispatcher", "password": "dispatcher"},
     )
     print(f"   Status: {login_response.status_code}")
     if login_response.status_code == 200:
         token = login_response.json()["access"]
-        print(f"   ✓ Login successful, token received")
+        print("   ✓ Login successful, token received")
     else:
         print(f"   ✗ Login failed: {login_response.text}")
         return
-    
+
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # 2. Test /auth/me/
     print("\n2. Testing /auth/me/ endpoint...")
     me_response = requests.get(f"{BASE_URL}/auth/me/", headers=headers)
@@ -32,7 +33,7 @@ def test_backend():
         print(f"   ✓ User: {user['username']} ({user['role']})")
     else:
         print(f"   ✗ Failed: {me_response.text}")
-    
+
     # 3. Test /buggies/
     print("\n3. Testing /buggies/ endpoint...")
     buggies_response = requests.get(f"{BASE_URL}/buggies/", headers=headers)
@@ -41,10 +42,11 @@ def test_backend():
         buggies = buggies_response.json()
         print(f"   ✓ Found {len(buggies)} buggy(s)")
         for buggy in buggies:
-            print(f"      - {buggy['display_name']}: {buggy['status']} at {buggy['current_poi']['name'] if buggy['current_poi'] else 'unknown'}")
+            location = buggy["current_poi"]["name"] if buggy["current_poi"] else "unknown"
+            print(f"      - {buggy['display_name']}: {buggy['status']} at {location}")
     else:
         print(f"   ✗ Failed: {buggies_response.text}")
-    
+
     # 4. Test /rides/
     print("\n4. Testing /rides/ endpoint...")
     rides_response = requests.get(f"{BASE_URL}/rides/", headers=headers)
@@ -54,7 +56,7 @@ def test_backend():
         print(f"   ✓ Found {len(rides)} ride(s)")
     else:
         print(f"   ✗ Failed: {rides_response.text}")
-    
+
     # 5. Test creating a ride
     print("\n5. Testing /rides/create-and-assign/ endpoint...")
     ride_data = {
@@ -62,12 +64,12 @@ def test_backend():
         "dropoff_poi_code": "BEACH_BAR",
         "num_guests": 2,
         "room_number": "101",
-        "guest_name": "Test Guest"
+        "guest_name": "Test Guest",
     }
     create_response = requests.post(
         f"{BASE_URL}/rides/create-and-assign/",
         headers=headers,
-        json=ride_data
+        json=ride_data,
     )
     print(f"   Status: {create_response.status_code}")
     if create_response.status_code == 201:
@@ -75,7 +77,7 @@ def test_backend():
         print(f"   ✓ Ride {result['ride']['public_code']} assigned to {result['assigned_buggy']['display_name']}")
     else:
         print(f"   ✗ Failed: {create_response.text}")
-    
+
     # 6. Test metrics
     print("\n6. Testing /metrics/summary/ endpoint...")
     metrics_response = requests.get(f"{BASE_URL}/metrics/summary/", headers=headers)
@@ -85,8 +87,9 @@ def test_backend():
         print(f"   ✓ Date: {metrics['date']}, Total rides: {metrics['total_rides']}")
     else:
         print(f"   ✗ Failed: {metrics_response.text}")
-    
+
     print("\n✓ Backend API tests completed!")
+
 
 if __name__ == "__main__":
     try:
@@ -95,4 +98,3 @@ if __name__ == "__main__":
         print("✗ Error: Could not connect to backend. Is the server running?")
     except Exception as e:
         print(f"✗ Error: {e}")
-

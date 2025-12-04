@@ -1,6 +1,46 @@
 from rest_framework import serializers
 from core.models import POI, PoiEdge, Buggy, BuggyRouteStop, RideRequest, User
 
+PLACEHOLDER_PICKUP_CODE = "N/A-PICKUP"
+PLACEHOLDER_DROPOFF_CODE = "N/A-DROPOFF"
+PLACEHOLDER_TRAVEL_TIME_S = 180
+
+
+def _ensure_edge(a: POI, b: POI) -> None:
+    """Create or update an undirected edge between two POIs with the placeholder travel time."""
+    if a.id == b.id:
+        return
+    low, high = (a, b) if a.id < b.id else (b, a)
+    edge, created = PoiEdge.objects.get_or_create(
+        from_poi=low,
+        to_poi=high,
+        defaults={"travel_time_s": PLACEHOLDER_TRAVEL_TIME_S},
+    )
+    if not created and edge.travel_time_s != PLACEHOLDER_TRAVEL_TIME_S:
+        edge.travel_time_s = PLACEHOLDER_TRAVEL_TIME_S
+        edge.save(update_fields=["travel_time_s"])
+
+
+def ensure_placeholder_pois_and_edges():
+    """
+    Make sure fallback POIs exist and are connected to every POI with a 180s edge.
+    Returns the placeholder pickup and dropoff POI instances.
+    """
+    na_pickup, _ = POI.objects.get_or_create(
+        code=PLACEHOLDER_PICKUP_CODE, defaults={"name": "N/A Pickup"}
+    )
+    na_dropoff, _ = POI.objects.get_or_create(
+        code=PLACEHOLDER_DROPOFF_CODE, defaults={"name": "N/A Dropoff"}
+    )
+
+    all_pois = list(POI.objects.all())
+    for poi in all_pois:
+        _ensure_edge(na_pickup, poi)
+        _ensure_edge(na_dropoff, poi)
+    _ensure_edge(na_pickup, na_dropoff)
+
+    return na_pickup, na_dropoff
+
 
 class POISerializer(serializers.ModelSerializer):
     class Meta:
@@ -67,8 +107,8 @@ class RideRequestSerializer(serializers.ModelSerializer):
 
 
 class RideRequestCreateSerializer(serializers.ModelSerializer):
-    pickup_poi_code = serializers.CharField(write_only=True)
-    dropoff_poi_code = serializers.CharField(write_only=True)
+    pickup_poi_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    dropoff_poi_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = RideRequest
@@ -83,15 +123,30 @@ class RideRequestCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs["num_guests"] <= 0:
             raise serializers.ValidationError("num_guests must be positive")
+
+        # Normalize codes to uppercase and allow blanks (to fall back to placeholder POIs)
+        attrs["pickup_poi_code"] = (attrs.get("pickup_poi_code") or "").strip().upper()
+        attrs["dropoff_poi_code"] = (attrs.get("dropoff_poi_code") or "").strip().upper()
         return attrs
+
+    def _resolve_poi(self, code: str, *, fallback: POI, field_name: str) -> POI:
+        if not code:
+            return fallback
+        try:
+            return POI.objects.get(code=code)
+        except POI.DoesNotExist:
+            raise serializers.ValidationError({field_name: f"POI code '{code}' not found"})
 
     def create(self, validated_data):
         from core.models import POI
-        pickup_code = validated_data.pop("pickup_poi_code")
-        dropoff_code = validated_data.pop("dropoff_poi_code")
 
-        pickup = POI.objects.get(code=pickup_code)
-        dropoff = POI.objects.get(code=dropoff_code)
+        pickup_code = validated_data.pop("pickup_poi_code", "")
+        dropoff_code = validated_data.pop("dropoff_poi_code", "")
+
+        na_pickup, na_dropoff = ensure_placeholder_pois_and_edges()
+
+        pickup = self._resolve_poi(pickup_code, fallback=na_pickup, field_name="pickup_poi_code")
+        dropoff = self._resolve_poi(dropoff_code, fallback=na_dropoff, field_name="dropoff_poi_code")
 
         ride = RideRequest.objects.create(
             pickup_poi=pickup,
