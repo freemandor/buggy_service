@@ -64,11 +64,8 @@ class Command(BaseCommand):
         action = "Created" if created else "Updated"
         self.stdout.write(self.style.SUCCESS(f"{action} Buggy #2 at Mont Fleuri (idle, far away)"))
         
-        # Clean up any existing incomplete rides for Buggy 1
-        BuggyRouteStop.objects.filter(
-            buggy=buggy1,
-            status__in=[BuggyRouteStop.StopStatus.PLANNED, BuggyRouteStop.StopStatus.ON_ROUTE]
-        ).delete()
+        # Clean up any existing route stops for Buggy 1 so we can reset sequence indexes
+        BuggyRouteStop.objects.filter(buggy=buggy1).delete()
         
         # Delete any pending/in-progress rides
         RideRequest.objects.filter(
