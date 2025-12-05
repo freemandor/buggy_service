@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Layout from "../components/Layout";
 import { fetchDriverRoute, driverStartStop, driverCompleteStop, DriverRouteStop } from "../api/driver";
 
@@ -6,16 +6,25 @@ const DriverRoutePage: React.FC = () => {
   const [stops, setStops] = useState<DriverRouteStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const latestRequestId = useRef(0);
+  const bootstrapped = useRef(false);
 
   const loadRoute = useCallback(async () => {
+    const requestId = ++latestRequestId.current;
     try {
       const data = await fetchDriverRoute();
-      setStops(data);
-      setError(null);
+      // Only apply the latest response to avoid clobbering newer state.
+      if (requestId === latestRequestId.current) {
+        setStops(data);
+        setError(null);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load route");
     } finally {
-      setLoading(false);
+      if (!bootstrapped.current) {
+        bootstrapped.current = true;
+        setLoading(false);
+      }
     }
   }, []);
 
