@@ -23,6 +23,21 @@ Parameters:
   FrontendMemory:
     Type: String
     Default: 512
+  DbName:
+    Type: String
+    Default: buggy_service
+  DbUser:
+    Type: String
+    Default: buggy_user
+  DbPassword:
+    Type: String
+    NoEcho: true
+  DbAllocatedStorage:
+    Type: Number
+    Default: 20
+  DbInstanceClass:
+    Type: String
+    Default: db.t3.micro
 
 Resources:
   VPC:
@@ -170,6 +185,46 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags: [{Key: Name, Value: service-sg}]
 
+  DbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DB SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ServiceSG
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags: [{Key: Name, Value: db-sg}]
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: buggy db subnets
+      SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DbName
+      Engine: postgres
+      EngineVersion: 16.2
+      MasterUsername: !Ref DbUser
+      MasterUserPassword: !Ref DbPassword
+      AllocatedStorage: !Ref DbAllocatedStorage
+      DBInstanceClass: !Ref DbInstanceClass
+      VPCSecurityGroups: [!Ref DbSG]
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageType: gp2
+      BackupRetentionPeriod: 0
+
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -266,6 +321,16 @@ Resources:
               Value: "*"
             - Name: DEBUG
               Value: "False"
+            - Name: DB_HOST
+              Value: !GetAtt PostgresDB.Endpoint.Address
+            - Name: DB_PORT
+              Value: "5432"
+            - Name: DB_NAME
+              Value: !Ref DbName
+            - Name: DB_USER
+              Value: !Ref DbUser
+            - Name: DB_PASSWORD
+              Value: !Ref DbPassword
           LogConfiguration:
             LogDriver: awslogs
             Options:
