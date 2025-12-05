@@ -41,6 +41,9 @@ Parameters:
   AcmCertificateArn:
     Type: String
     Description: ACM certificate ARN for the public domain (e.g., www.cmsbuggy.com)
+  HttpsListenerArn:
+    Type: String
+    Description: Existing ALB HTTPS listener ARN (port 443)
 
 Resources:
   VPC:
@@ -275,22 +278,10 @@ Resources:
             Port: '443'
             StatusCode: HTTP_301
 
-  ALBListener443:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref ALB
-      Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref AcmCertificateArn
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref FrontendTG
-
   ApiRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref ALBListener443
+      ListenerArn: !Ref HttpsListenerArn
       Priority: 10
       Conditions:
         - Field: path-pattern

@@ -51,4 +51,5 @@ aws cloudformation deploy `
   --parameter-overrides `
     BackendImage=$env:BACKEND_IMAGE `
     FrontendImage=$env:FRONTEND_IMAGE `
-    DbPassword=$env:DB_PASSWORD
+    DbPassword=$env:DB_PASSWORD `
+    AcmCertificateArn=$env:ACM_CERTIFICATE_ARN
