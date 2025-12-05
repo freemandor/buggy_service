@@ -213,7 +213,7 @@ Resources:
     Properties:
       DBName: !Ref DbName
       Engine: postgres
-      EngineVersion: 16.3
+      EngineVersion: 16.6
       MasterUsername: !Ref DbUser
       MasterUserPassword: !Ref DbPassword
       AllocatedStorage: !Ref DbAllocatedStorage
