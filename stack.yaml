@@ -38,6 +38,9 @@ Parameters:
   DbInstanceClass:
     Type: String
     Default: db.t3.micro
+  AcmCertificateArn:
+    Type: String
+    Description: ACM certificate ARN for the public domain (e.g., www.cmsbuggy.com)
 
 Resources:
   VPC:
@@ -157,6 +160,10 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: -1
           FromPort: -1
@@ -262,13 +269,28 @@ Resources:
       Port: 80
       Protocol: HTTP
       DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+  ALBListener443:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref AcmCertificateArn
+      DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref FrontendTG
 
   ApiRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref ALBListener80
+      ListenerArn: !Ref ALBListener443
       Priority: 10
       Conditions:
         - Field: path-pattern
