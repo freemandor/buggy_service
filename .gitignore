@@ -64,6 +64,7 @@ playwright/.cache/
 # Environment variables (if they contain secrets)
 # Note: We're keeping .env for Vite since it only has API_BASE URL
 # .env
+.deploy.env
 
 # Logs
 *.log

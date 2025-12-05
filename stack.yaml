@@ -23,6 +23,27 @@ Parameters:
   FrontendMemory:
     Type: String
     Default: 512
+  DbName:
+    Type: String
+    Default: buggy_service
+  DbUser:
+    Type: String
+    Default: buggy_user
+  DbPassword:
+    Type: String
+    NoEcho: true
+  DbAllocatedStorage:
+    Type: Number
+    Default: 20
+  DbInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  AcmCertificateArn:
+    Type: String
+    Description: ACM certificate ARN for the public domain (e.g., www.cmsbuggy.com)
+  HttpsListenerArn:
+    Type: String
+    Description: Existing ALB HTTPS listener ARN (port 443)
 
 Resources:
   VPC:
@@ -142,6 +163,10 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: -1
           FromPort: -1
@@ -169,6 +194,46 @@ Resources:
           ToPort: -1
           CidrIp: 0.0.0.0/0
       Tags: [{Key: Name, Value: service-sg}]
+
+  DbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DB SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ServiceSG
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags: [{Key: Name, Value: db-sg}]
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: buggy db subnets
+      SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DbName
+      Engine: postgres
+      EngineVersion: 16.6
+      MasterUsername: !Ref DbUser
+      MasterUserPassword: !Ref DbPassword
+      AllocatedStorage: !Ref DbAllocatedStorage
+      DBInstanceClass: !Ref DbInstanceClass
+      VPCSecurityGroups: [!Ref DbSG]
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageType: gp2
+      BackupRetentionPeriod: 0
 
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -207,13 +272,16 @@ Resources:
       Port: 80
       Protocol: HTTP
       DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref FrontendTG
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
 
   ApiRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !Ref ALBListener80
+      ListenerArn: !Ref HttpsListenerArn
       Priority: 10
       Conditions:
         - Field: path-pattern
@@ -266,6 +334,16 @@ Resources:
               Value: "*"
             - Name: DEBUG
               Value: "False"
+            - Name: DB_HOST
+              Value: !GetAtt PostgresDB.Endpoint.Address
+            - Name: DB_PORT
+              Value: "5432"
+            - Name: DB_NAME
+              Value: !Ref DbName
+            - Name: DB_USER
+              Value: !Ref DbUser
+            - Name: DB_PASSWORD
+              Value: !Ref DbPassword
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -300,7 +378,7 @@ Resources:
     Properties:
       ServiceName: buggy-backend
       Cluster: !Ref ECSCluster
-      DesiredCount: 1
+      DesiredCount: 2
       LaunchType: FARGATE
       DeploymentConfiguration:
         MaximumPercent: 200

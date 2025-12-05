@@ -3,7 +3,6 @@ import Layout from "../components/Layout";
 import { fetchBuggies, Buggy } from "../api/buggies";
 import { fetchRides, createRideAndAssign, RideRequest, CreateRidePayload } from "../api/rides";
 import { fetchPOIs, POI } from "../api/pois";
-import { useDispatcherNotifications } from "../hooks/useDispatcherNotifications";
 
 const DispatcherDashboard: React.FC = () => {
   const [buggies, setBuggies] = useState<Buggy[]>([]);
@@ -22,45 +21,43 @@ const DispatcherDashboard: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadInitial = useCallback(async () => {
     try {
-      const [buggiesData, ridesData, poisData] = await Promise.all([
-        fetchBuggies(), 
-        fetchRides(),
-        fetchPOIs()
+      const [buggiesData, poisData] = await Promise.all([
+        fetchBuggies(),
+        fetchPOIs(),
       ]);
       setBuggies(buggiesData);
-      setRides(ridesData);
-      setPois(poisData);
       setHasActiveBuggy(buggiesData.some(b => b.status === "ACTIVE"));
-      
-      // Set default values to first two POIs
+      setPois(poisData);
       if (poisData.length >= 2) {
         setPickupPoi(poisData[0].code);
         setDropoffPoi(poisData[1].code);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to load data");
-    } finally {
-      setLoading(false);
+    }
+  }, []);
+
+  const loadRides = useCallback(async () => {
+    try {
+      const ridesData = await fetchRides();
+      setRides(ridesData);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to load data");
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Setup SSE connection for real-time updates
-  useDispatcherNotifications({
-    onRideStatusUpdate: () => {
-      // Reload data when ride status changes
-      loadData();
-    },
-    onError: (error) => {
-      console.error("SSE connection error:", error);
-      // Connection errors are handled by auto-reconnect in the hook
-    }
-  });
+    const bootstrap = async () => {
+      await loadInitial();
+      await loadRides();
+      setLoading(false);
+    };
+    bootstrap();
+    const interval = window.setInterval(loadRides, 3000);
+    return () => window.clearInterval(interval);
+  }, [loadInitial, loadRides]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +82,7 @@ const DispatcherDashboard: React.FC = () => {
       setRoomNumber("");
       setGuestName("");
       // Reload data
-      await loadData();
+      await loadRides();
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to create ride");
     } finally {

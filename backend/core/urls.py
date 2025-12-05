@@ -11,10 +11,6 @@ urlpatterns = [
     path("driver/my-route/", views.DriverMyRouteView.as_view()),
     path("driver/stops/<int:stop_id>/start/", views.DriverStopStartView.as_view(), name="driver-stop-start"),
     path("driver/stops/<int:stop_id>/complete/", views.DriverStopCompleteView.as_view(), name="driver-stop-complete"),
-    path("driver/ride-notifications/", views.DriverRideNotificationsView.as_view(), name="driver-ride-notifications"),
-    
-    # Dispatcher SSE
-    path("dispatcher/ride-notifications/", views.DispatcherRideNotificationsView.as_view(), name="dispatcher-ride-notifications"),
     path("metrics/summary/", views.MetricsSummaryView.as_view()),
     
     # Manager CRUD endpoints
