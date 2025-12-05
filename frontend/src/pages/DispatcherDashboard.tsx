@@ -55,7 +55,7 @@ const DispatcherDashboard: React.FC = () => {
       setLoading(false);
     };
     bootstrap();
-    const interval = window.setInterval(loadRides, 3000);
+    const interval = window.setInterval(loadRides, 10000);
     return () => window.clearInterval(interval);
   }, [loadInitial, loadRides]);
 

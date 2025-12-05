@@ -30,7 +30,7 @@ const DriverRoutePage: React.FC = () => {
 
   useEffect(() => {
     loadRoute();
-    const interval = window.setInterval(loadRoute, 3000);
+    const interval = window.setInterval(loadRoute, 10000);
     return () => window.clearInterval(interval);
   }, [loadRoute]);
 
