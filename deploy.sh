@@ -39,4 +39,5 @@ aws cloudformation deploy \
     BackendImage="$BACKEND_IMAGE" \
     FrontendImage="$FRONTEND_IMAGE" \
     DbPassword="$DB_PASSWORD" \
-    AcmCertificateArn="$ACM_CERTIFICATE_ARN"
+    AcmCertificateArn="$ACM_CERTIFICATE_ARN" \
+    HttpsListenerArn="$HTTPS_LISTENER_ARN"
